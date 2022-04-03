@@ -17,11 +17,10 @@ When you click the **Knit** button a document will be generated that includes bo
 summary(cars)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+# For more infromation on the variables go to https://github.com/owid/covid-19-data/tree/master/public/data/vaccinations 
+y <- read.csv("vaccinations.csv")
+head(y)
+y
 ```
 
