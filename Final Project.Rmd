@@ -3,24 +3,26 @@ title: "STAT_380_Final_Project"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r}
+#All Libraries
+library(dplyr)
+library(tidyverse)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
 
 ```{r}
 # For more infromation on the variables go to https://github.com/owid/covid-19-data/tree/master/public/data/vaccinations 
+x <- read.csv("locations_vaccinations.csv")
 y <- read.csv("vaccinations.csv")
-head(y)
+z <- read.csv("us_state_vaccinations.csv")
+
+x
 y
+z
+```
+```{r}
+z %>%
+  group_by(location) %>%
+  summarise(total_vaccinated = max(total_vaccinations, na.rm = TRUE), total_distributed = max(total_distributed, na.rm = TRUE))
 ```
 
