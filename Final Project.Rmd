@@ -26,3 +26,20 @@ z %>%
   summarise(total_vaccinated = max(total_vaccinations, na.rm = TRUE), total_distributed = max(total_distributed, na.rm = TRUE))
 ```
 
+```{r}
+#Data Visualization
+```
+
+
+```{r}
+#Hypothesis Testing
+```
+
+```{r}
+#Linear Regresion
+```
+
+```{r}
+#PC Analysis
+```
+
