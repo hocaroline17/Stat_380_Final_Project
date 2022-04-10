@@ -7,8 +7,8 @@ output: html_document
 #All Libraries
 library(dplyr)
 library(tidyverse)
-#jhsdbjhbs
 ```
+
 
 
 ```{r}
@@ -16,19 +16,25 @@ library(tidyverse)
 x <- read.csv("locations_vaccinations.csv")
 y <- read.csv("vaccinations.csv")
 z <- read.csv("us_state_vaccinations.csv")
+ArtistData <- readr::read_csv("owid-covid-data.csv.zip")
 
-x
-y
-z
 ```
 ```{r}
-z %>%
+y %>%
   group_by(location) %>%
-  summarise(total_vaccinated = max(total_vaccinations, na.rm = TRUE), total_distributed = max(total_distributed, na.rm = TRUE))
+  summarise(total_vaccinated = max(total_vaccinations, na.rm = TRUE)) %>%
+  arrange(desc(total_vaccinated))
+```
+
+
+
+```{r}
+#Question 1  
 ```
 
 ```{r}
 #Data Visualization
+
 ```
 
 
