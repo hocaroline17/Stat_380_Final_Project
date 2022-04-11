@@ -7,6 +7,8 @@ output: html_document
 #All Libraries
 library(dplyr)
 library(tidyverse)
+library(cluster)
+library(factoextra)
 ```
 
 
@@ -16,20 +18,36 @@ library(tidyverse)
 x <- read.csv("locations_vaccinations.csv")
 y <- read.csv("vaccinations.csv")
 z <- read.csv("us_state_vaccinations.csv")
-ArtistData <- readr::read_csv("owid-covid-data.csv.zip")
+CovidData <- readr::read_csv("owid-covid-data.csv.zip") 
+
+# Note the CovidData is the data included in x, y, and z with other stuff. x y and z are there if you want something more specifc without having to use the CovidData
 
 ```
 ```{r}
-y %>%
-  group_by(location) %>%
-  summarise(total_vaccinated = max(total_vaccinations, na.rm = TRUE)) %>%
-  arrange(desc(total_vaccinated))
+CovidData %>% filter(location == 'British Virgin Islands')
 ```
 
+```{r}
+
+Ratios <- CovidData %>%
+  group_by(location) %>%
+  summarise(ratio = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
+            gdp = max(gdp_per_capita, na.rm = TRUE), index1 = max(stringency_index, na.rm = TRUE), 
+            density = max(population_density, na.rm = TRUE), index2 = max(human_development_index, na.rm = TRUE)) %>% 
+  na.omit() %>%
+  filter(is.finite(ratio),is.finite(gdp),is.finite(index1),is.finite(density),is.finite(index2))
+Ratios
+```
 
 
 ```{r}
 #Question 1  
+##eu_dist <- get_dist(iris2, method = 'euclidean')
+
+ratio2 <- Ratios %>% select(-location) %>% scale()
+
+
+fviz_nbclust(Ratios, hcut, hc_method = "complete", hc_metric = "euclidean", method = "wss")
 ```
 
 ```{r}
