@@ -24,20 +24,20 @@ CovidData <- readr::read_csv("owid-covid-data.csv.zip")
 ```
 
 
-```{r}
+```{r warning=FALSE}
 Ratios <- CovidData %>%
   group_by(location) %>%
   summarise(ratio = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
             gdp = max(gdp_per_capita, na.rm = TRUE), 
-            stringency_index = max(stringency_index, na.rm = TRUE), 
+            indexS = max(stringency_index, na.rm = TRUE), 
             density = max(population_density, na.rm = TRUE), 
-            human_development_index = max(human_development_index, na.rm = TRUE)) %>% 
+            indexHD = max(human_development_index, na.rm = TRUE)) %>% 
   na.omit() %>%
   filter(is.finite(ratio),
          is.finite(gdp),
-         is.finite(index1),
+         is.finite(indexS),
          is.finite(density),
-         is.finite(index2))
+         is.finite(indexHD))
 Ratios
 ```
 
@@ -46,6 +46,13 @@ Ratios
 set.seed(15)
 RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% scale()
 fviz_nbclust(RatiosScaled, kmeans, method = "wss")
+```
+
+```{r}
+# PCA
+res <- Ratios %>% column_to_rownames(var = "location") %>% prcomp(scale = TRUE)
+get_eig(res)
+df.res <- res$x
 ```
 
 ```{r}
@@ -60,8 +67,3 @@ fviz_nbclust(RatiosScaled, kmeans, method = "wss")
 ```{r}
 #Linear Regresion
 ```
-
-```{r}
-#PC Analysis
-```
-
