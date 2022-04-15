@@ -64,6 +64,13 @@ kc
 ```
 
 ```{r}
+# PCA biplot
+res %>% fviz_pca_biplot(label = "var",
+                        habillage = as.factor(kc$cluster),
+                        repel = "TRUE") 
+```
+
+```{r}
 #Data Visualization
 ```
 
