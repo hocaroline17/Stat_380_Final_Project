@@ -56,6 +56,14 @@ df.res <- res$x
 ```
 
 ```{r}
+# k-means clustering 
+set.seed(15)
+kc <- df.res %>% 
+  kmeans(centers = 5) 
+kc
+```
+
+```{r}
 #Data Visualization
 ```
 
