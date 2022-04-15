@@ -20,39 +20,36 @@ y <- read.csv("vaccinations.csv")
 z <- read.csv("us_state_vaccinations.csv")
 CovidData <- readr::read_csv("owid-covid-data.csv.zip") 
 
-# Note the CovidData is the data included in x, y, and z with other stuff. x y and z are there if you want something more specifc without having to use the CovidData
-
-```
-```{r}
-CovidData %>% filter(location == 'British Virgin Islands')
+# Note the CovidData is the data included in x, y, and z with other stuff. x y and z are there if you want something more specific without having to use the CovidData
 ```
 
-```{r}
 
+```{r}
 Ratios <- CovidData %>%
   group_by(location) %>%
   summarise(ratio = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
-            gdp = max(gdp_per_capita, na.rm = TRUE), index1 = max(stringency_index, na.rm = TRUE), 
-            density = max(population_density, na.rm = TRUE), index2 = max(human_development_index, na.rm = TRUE)) %>% 
+            gdp = max(gdp_per_capita, na.rm = TRUE), 
+            stringency_index = max(stringency_index, na.rm = TRUE), 
+            density = max(population_density, na.rm = TRUE), 
+            human_development_index = max(human_development_index, na.rm = TRUE)) %>% 
   na.omit() %>%
-  filter(is.finite(ratio),is.finite(gdp),is.finite(index1),is.finite(density),is.finite(index2))
+  filter(is.finite(ratio),
+         is.finite(gdp),
+         is.finite(index1),
+         is.finite(density),
+         is.finite(index2))
 Ratios
 ```
 
-
 ```{r}
-#Question 1  
-##eu_dist <- get_dist(iris2, method = 'euclidean')
-
-ratio2 <- Ratios %>% select(-location) %>% scale()
-
-
-fviz_nbclust(Ratios, hcut, hc_method = "complete", hc_metric = "euclidean", method = "wss")
+# optimal number of clusters
+set.seed(15)
+RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% scale()
+fviz_nbclust(RatiosScaled, kmeans, method = "wss")
 ```
 
 ```{r}
 #Data Visualization
-
 ```
 
 
