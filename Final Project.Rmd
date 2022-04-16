@@ -46,6 +46,7 @@ Ratios
 set.seed(15)
 RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% scale()
 fviz_nbclust(RatiosScaled, kmeans, method = "wss")
+fviz_nbclust(RatiosScaled, hcut, hc_method = "complete", hc_metric = "euclidean", method = "wss")
 ```
 
 ```{r}
@@ -60,13 +61,24 @@ df.res <- res$x
 set.seed(15)
 kc <- df.res %>% 
   kmeans(centers = 5) 
-kc
 ```
 
 ```{r}
-# PCA biplot
+# hierarchical clustering
+eu_dist <- get_dist(RatiosScaled, method = 'euclidean') 
+hc_complete <- hclust(eu_dist, method = 'complete') 
+hc <- cutree(hc_complete, k = 3)
+```
+
+
+```{r}
+# PCA biplot 
 res %>% fviz_pca_biplot(label = "var",
                         habillage = as.factor(kc$cluster),
+                        repel = "TRUE") 
+
+res %>% fviz_pca_biplot(label = "var",
+                        habillage = as.factor(hc),
                         repel = "TRUE") 
 ```
 
