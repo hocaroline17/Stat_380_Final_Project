@@ -24,134 +24,232 @@ CovidData <- readr::read_csv("owid-covid-data.csv.zip")
 ```
 
 ```{r}
-# from https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-County/8xkx-amqh
-COVID_19_Vaccinations_in_the_United_States_County <- file.choose()
+Vaccination <- read.csv("us_county_vaccinations.csv")
+Population <- read.csv("us_county_populations.csv")
+IncomeAndPoverty <- read.csv("us_county_income_and_poverty.csv")
+Unemployment <- read.csv("us_county_unemployment.csv")
+Geography <- read.csv("us_county_geography.csv")
+WorldGeography <- read.csv("geography.csv")
+```
 
-Vaccination <-
-  data.table::fread(COVID_19_Vaccinations_in_the_United_States_County)
+Commented out portion below is for loading files and converting to csv files. The files would need to be downloaded for the code to work, so I commented it out to run the rest of the code more easily. Can also delete. 
+
+<!-- ```{r} -->
+<!-- # from https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-County/8xkx-amqh -->
+<!-- COVID_19_Vaccinations_in_the_United_States_County <- file.choose() -->
+
+<!-- Vaccination <- -->
+<!--   data.table::fread(COVID_19_Vaccinations_in_the_United_States_County) -->
+
+<!-- Vaccination <- -->
+<!--   Vaccination %>% -->
+<!--   rename(county = Recip_County, -->
+<!--          state = Recip_State, -->
+<!--          metro = Metro_status, -->
+<!--          vaccinated = Series_Complete_Pop_Pct) %>% -->
+<!--   filter(Date == "04/18/2022") %>%  # most recent data -->
+<!--   select(county, state, metro, vaccinated) # variables of interest -->
+
+<!-- write.csv(Vaccination, "us_county_vaccinations.csv") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # from https://www.census.gov/data/tables/time-series/demo/popest/2020s-counties-total.html -->
+<!-- County_and_State_Annual_Resident_Population_Estimates_2021 <- file.choose() -->
+
+<!-- Population <- -->
+<!--   data.table::fread(County_and_State_Annual_Resident_Population_Estimates_2021) -->
+
+<!-- # pattern to identify counties  -->
+<!-- pattern <- "borough|census|city|county|district|municipality|parish" -->
+
+<!-- # remove cases that are not counties -->
+<!-- Population <-  -->
+<!--   Population %>% -->
+<!--   filter(grepl(pattern, CTYNAME, ignore.case = TRUE))  -->
+
+<!-- Population <-  -->
+<!--   Population %>% -->
+<!--   rename(county = CTYNAME, -->
+<!--          state = STNAME, -->
+<!--          population = POPESTIMATE2020) %>% -->
+<!--   select(county, state, population) %>% # variables of interest -->
+<!--   mutate(state = state.abb[match(state, state.name)]) # convert names to abbreviations -->
+
+<!-- write.csv(Population, "us_county_populations.csv") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # from https://www.census.gov/data/datasets/2020/demo/saipe/2020-state-and-county.html -->
+<!-- US_State_and_County_Income_and_Poverty_Estimates_2020 <- file.choose() -->
+
+<!-- IncomeAndPoverty <- -->
+<!--   read_xls(US_State_and_County_Income_and_Poverty_Estimates_2020, range = "A4:Y3199") -->
+
+<!-- # pattern to identify counties  -->
+<!-- pattern <- "borough|census|city|county|district|municipality|parish" -->
+
+<!-- # remove cases that are not counties -->
+<!-- IncomeAndPoverty <-  -->
+<!--   IncomeAndPoverty %>% -->
+<!--   filter(grepl(pattern, Name, ignore.case = TRUE))  -->
+
+<!-- IncomeAndPoverty <-  -->
+<!--   IncomeAndPoverty %>% -->
+<!--   rename(county = Name,  -->
+<!--          state = `Postal Code`, -->
+<!--          poverty = `Poverty Percent, All Ages`,  -->
+<!--          income = `Median Household Income`) %>% -->
+<!--   select(county, state, poverty, income) %>% # variables of interest -->
+<!--   mutate(poverty = as.numeric(poverty), # convert plain text to number -->
+<!--          income = as.numeric(income))  -->
+
+<!-- write.csv(IncomeAndPoverty, "us_county_income_and_poverty.csv") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # from https://www.bls.gov/lau/ at "Labor force data by county, 2021 annual averages" under "County Data" -->
+<!-- Labor_force_data_by_county_2021_annual_averages <- file.choose() -->
+
+<!-- Unemployment <- -->
+<!--   read_xlsx(Labor_force_data_by_county_2021_annual_averages, range = "A5:J3148") -->
+
+<!-- Unemployment = Unemployment[-1, ] # delete empty first row -->
+
+<!-- # pattern to extract state abbreviation -->
+<!-- pattern <- ",\\s(.{2})" -->
+
+<!-- Unemployment <-  -->
+<!--   Unemployment %>% -->
+<!--   # extract state abbreviation -->
+<!--   tidyr::extract(`County Name/State Abbreviation`, into = "state", regex = pattern, remove = FALSE) %>%   -->
+<!--   # remove state abbreviation  -->
+<!--   mutate(`County Name/State Abbreviation` = str_remove(`County Name/State Abbreviation`, ",.*")) %>%  -->
+<!--   rename(county = `County Name/State Abbreviation`, -->
+<!--          unemployment = `(%)`) %>% -->
+<!--   select(county, state, unemployment) # variables of interest -->
+
+<!-- write.csv(Unemployment, "us_county_unemployment.csv") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # from https://public.opendatasoft.com/explore/dataset/us-county-boundaries/ -->
+<!-- US_County_Boundaries <- file.choose() -->
+
+<!-- Geography <- -->
+<!--   data.table::fread(US_County_Boundaries) -->
+
+<!-- Geography <- -->
+<!--   Geography %>% -->
+<!--   rename(county = NAMELSAD, -->
+<!--          state = STUSAB, -->
+<!--          latitude = INTPTLAT, -->
+<!--          longitude = INTPTLON) %>% -->
+<!--   select(county, state, latitude, longitude) -->
+
+<!-- write.csv(Geography, "us_county_geography.csv") -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # from https://github.com/gavinr/world-countries-centroids -->
+<!-- World_Country_Centroids <- file.choose() -->
+
+<!-- WorldGeography <- -->
+<!--   data.table::fread(World_Country_Centroids) -->
+
+<!-- WorldGeography <- -->
+<!--   WorldGeography %>% -->
+<!--   rename(country = COUNTRY) %>% -->
+<!--   select(country, latitude, longitude) -->
+
+<!-- write.csv(WorldGeography, "geography.csv") -->
+<!-- ``` -->
+
+```{r}
+# compiling data sets for US county analysis
 
 Vaccination <-
   Vaccination %>%
-  rename(county = Recip_County,
-         state = Recip_State,
-         metro = Metro_status,
-         vaccinated = Series_Complete_Pop_Pct) %>%
-  filter(Date == "04/18/2022") %>%  # most recent data
-  select(county, state, metro, vaccinated) # variables of interest
+  # remove cases from Vaccination
+  filter(!grepl("GU|PR|VI", state),
+         !grepl("Unknown County", county))
 
-write.csv(Vaccination, "us_county_vaccinations.csv")
-```
-
-```{r}
-# from https://www.census.gov/data/tables/time-series/demo/popest/2020s-counties-total.html
-County_and_State_Annual_Resident_Population_Estimates_2021 <- file.choose()
+Vaccination <-
+  Vaccination %>%
+  # remove and rename cases from Vaccination
+  filter(!grepl("Valdez-Cordova Census Area", county)) %>%
+  mutate(county = gsub("LaSalle", "La Salle", county))
 
 Population <-
-  data.table::fread(County_and_State_Annual_Resident_Population_Estimates_2021)
-
-# pattern to identify counties 
-pattern <- "borough|census|city|county|district|municipality|parish"
-
-# remove cases that are not counties
-Population <- 
   Population %>%
-  filter(grepl(pattern, CTYNAME, ignore.case = TRUE)) 
+  # remove and rename cases from Population
+  filter(!grepl("Chugach Census Area|Copper River Census Area", county)) %>%
+  mutate(county = gsub("Do\xf1a Ana County", "Dona Ana County", county),
+         county = gsub("LaSalle", "La Salle", county),
+         county = gsub("Petersburg Borough", "Petersburg Census Area", county))
 
-Population <- 
-  Population %>%
-  rename(county = CTYNAME,
-         state = STNAME,
-         population = POPESTIMATE2020) %>%
-  select(county, state, population) %>% # variables of interest
-  mutate(state = state.abb[match(state, state.name)]) # convert names to abbreviations
-
-write.csv(Population, "us_county_populations.csv")
-```
-
-```{r}
-# from https://www.census.gov/data/datasets/2020/demo/saipe/2020-state-and-county.html
-US_State_and_County_Income_and_Poverty_Estimates_2020 <- file.choose()
+Population[is.na(Population)] = "DC" # add state abbreviation for Washington, D.C.
 
 IncomeAndPoverty <-
-  read_xls(US_State_and_County_Income_and_Poverty_Estimates_2020, range = "A4:Y3199")
-
-# pattern to identify counties 
-pattern <- "borough|census|city|county|district|municipality|parish"
-
-# remove cases that are not counties
-IncomeAndPoverty <- 
   IncomeAndPoverty %>%
-  filter(grepl(pattern, Name, ignore.case = TRUE)) 
+  # remove and rename cases in IncomeAndPoverty
+  filter(!grepl("Valdez-Cordova Census Area", county)) %>%
+  mutate(county = gsub("Anchorage Borough", "Anchorage Municipality", county),
+         county = gsub("DeBaca County", "De Baca County", county),
+         county = gsub("De Kalb County", "DeKalb County", county),
+         county = gsub("Juneau Borough", "Juneau City and Borough", county),
+         county = gsub("Lagrange County", "LaGrange County", county),
+         county = gsub("La Porte County", "LaPorte County", county),
+         county = gsub("Mc Kean County", "McKean County", county),
+         county = gsub("Petersburg Borough", "Petersburg Census Area", county),
+         county = gsub("Sitka Borough", "Sitka City and Borough", county),
+         county = gsub("Yakutat Borough", "Yakutat City and Borough", county))
 
-IncomeAndPoverty <- 
-  IncomeAndPoverty %>%
-  rename(county = Name, 
-         state = `Postal Code`,
-         poverty = `Poverty Percent, All Ages`, 
-         income = `Median Household Income`) %>%
-  select(county, state, poverty, income) %>% # variables of interest
-  mutate(poverty = as.numeric(poverty), # convert plain text to number
-         income = as.numeric(income)) 
-
-write.csv(IncomeAndPoverty, "us_county_income_and_poverty.csv")
-```
-
-```{r}
-# from https://www.bls.gov/lau/ at "Labor force data by county, 2021 annual averages" under "County Data"
-Labor_force_data_by_county_2021_annual_averages <- file.choose()
+Vaccination <-
+  Vaccination %>%
+  # remove case from Vaccination
+  filter(!grepl("Kalawao County", county))
 
 Unemployment <-
-  read_xlsx(Labor_force_data_by_county_2021_annual_averages, range = "A5:J3148")
-
-Unemployment = Unemployment[-1, ] # delete empty first row
-
-# pattern to extract state abbreviation
-pattern <- ",\\s(.{2})"
-
-Unemployment <- 
   Unemployment %>%
-  # extract state abbreviation
-  tidyr::extract(`County Name/State Abbreviation`, into = "state", regex = pattern, remove = FALSE) %>%  
-  # remove state abbreviation 
-  mutate(`County Name/State Abbreviation` = str_remove(`County Name/State Abbreviation`, ",.*")) %>% 
-  rename(county = `County Name/State Abbreviation`,
-         unemployment = `(%)`) %>%
-  select(county, state, unemployment) # variables of interest
+  # remove and rename cases in Unemployment
+  filter(!grepl("Valdez-Cordova Census Area", county)) %>%
+  mutate(county = gsub("Borough/municipality", "Municipality", county),
+         county = gsub("County/city", "County", county),
+         county = gsub("Borough/city", "City and Borough", county),
+         county = gsub("LaSalle", "La Salle", county),
+         county = gsub("County/town", "County", county),
+         county = gsub("Petersburg Borough", "Petersburg Census Area", county))
 
-write.csv(Unemployment, "us_county_unemployment.csv")
-```
-
-```{r}
-# from https://public.opendatasoft.com/explore/dataset/us-county-boundaries/
-US_County_Boundaries <- file.choose()
-
-Geography <-
-  data.table::fread(US_County_Boundaries)
+Unemployment[is.na(Unemployment)] = "DC" # add state abbreviation for Washington, D.C.
 
 Geography <-
   Geography %>%
-  rename(county = NAMELSAD,
-         state = STUSAB,
-         latitude = INTPTLAT,
-         longitude = INTPTLON) %>%
-  select(county, state, latitude, longitude)
+  # remove cases from Geography
+  filter(!grepl("AS|GU|MP|PR|VI", state))
 
-write.csv(Geography, "us_county_geography.csv")
+Geography <-
+  Geography %>%
+  # remove and rename cases in Geography
+  filter(!grepl("Kalawao County|Valdez-Cordova Census Area", county)) %>%
+  mutate(county = gsub("Doña Ana County", "Dona Ana County", county),
+         county = gsub("LaSalle", "La Salle", county),
+         county = gsub("Petersburg Borough", "Petersburg Census Area", county))
+
+USCovidData <-
+  Vaccination %>%
+  left_join(Population, by = c("county", "state")) %>%
+  left_join(IncomeAndPoverty, by = c("county", "state")) %>%
+  left_join(Unemployment, by = c("county", "state")) %>%
+  left_join(Geography, by = c("county", "state")) %>%
+  distinct()
 ```
 
 ```{r}
-# from https://github.com/gavinr/world-countries-centroids
-World_Country_Centroids <- file.choose()
-
-WorldGeography <-
-  data.table::fread(World_Country_Centroids)
-
-WorldGeography <-
-  WorldGeography %>%
-  rename(country = COUNTRY) %>%
-  select(country, latitude, longitude)
-
-write.csv(WorldGeography, "geography.csv")
+# adding longitude and latitude to CovidData
+CovidData <-
+  CovidData %>%
+  left_join(WorldGeography, by = c("location" = "country"))
 ```
 
 ```{r warning=FALSE}
@@ -161,13 +259,17 @@ Ratios <- CovidData %>%
             gdp = max(gdp_per_capita, na.rm = TRUE), 
             indexS = max(stringency_index, na.rm = TRUE), 
             density = max(population_density, na.rm = TRUE), 
-            indexHD = max(human_development_index, na.rm = TRUE)) %>% 
+            indexHD = max(human_development_index, na.rm = TRUE),
+            latitude = max(latitude, na.rm = TRUE),
+            longitude = max(longitude, na.rm = TRUE)) %>% 
   na.omit() %>%
   filter(is.finite(ratio),
          is.finite(gdp),
          is.finite(indexS),
          is.finite(density),
-         is.finite(indexHD))
+         is.finite(indexHD),
+         is.finite(latitude),
+         is.finite(longitude))
 Ratios
 ```
 
@@ -195,7 +297,7 @@ df.res <- res$x
 # k-means clustering 
 set.seed(15)
 kc <- df.res %>% 
-  kmeans(centers = 5) 
+  kmeans(centers = 6) 
 kc
 ```
 
