@@ -223,25 +223,14 @@ Unemployment <-
 
 Unemployment[is.na(Unemployment)] = "DC" # add state abbreviation for Washington, D.C.
 
-Geography <-
-  Geography %>%
-  # remove cases from Geography
-  filter(!grepl("AS|GU|MP|PR|VI", state))
-
-Geography <-
-  Geography %>%
-  # remove and rename cases in Geography
-  filter(!grepl("Kalawao County|Valdez-Cordova Census Area", county)) %>%
-  mutate(county = gsub("Doña Ana County", "Dona Ana County", county),
-         county = gsub("LaSalle", "La Salle", county),
-         county = gsub("Petersburg Borough", "Petersburg Census Area", county))
-
 USCovidData <-
   Vaccination %>%
   left_join(Population, by = c("county", "state")) %>%
   left_join(IncomeAndPoverty, by = c("county", "state")) %>%
   left_join(Unemployment, by = c("county", "state")) %>%
-  left_join(Geography, by = c("county", "state")) %>%
+  unite("county_state", county:state, sep = " ") %>%
+  select(county_state, vaccinated, poverty, population, income, unemployment) %>%
+  na.omit() %>%
   distinct()
 ```
 
@@ -274,16 +263,10 @@ Ratios
 ```
 
 ```{r}
-# optimal number of clusters
-set.seed(15)
+# optimal number of clusters for countries
+set.seed(1234)
 RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% scale()
 fviz_nbclust(RatiosScaled, kmeans, method = "wss")
-res <- kmeans(RatiosScaled,4)
-summary(res)
-res
-
-o <- order(res$cluster)
-data.frame(res$cluster[o])
 ```
 
 ```{r}
@@ -295,23 +278,55 @@ df.res <- res$x
 
 ```{r}
 # k-means clustering 
-set.seed(15)
-kc <- df.res %>% 
-  kmeans(centers = 6) 
-kc
+set.seed(1234)
+kc <- df.res %>% kmeans(6) 
+summary(kc)
+o <- order(kc$cluster)
+data.frame(kc$cluster[o])
 ```
 
-```{r}
+```{r warning=FALSE}
 # PCA biplot
 res %>% fviz_pca_biplot(label = "var",
                         habillage = as.factor(kc$cluster),
-                        repel = "TRUE") 
+                        repel = "TRUE") +
+  ylim(-5, 3)
+```
+
+```{r}
+# optimal number of clusters US counties
+set.seed(1234)
+USScaled <- USCovidData %>% column_to_rownames(var = "county_state") %>% scale()
+fviz_nbclust(USScaled, kmeans, method = "wss")
+```
+
+```{r}
+# PCA US counties
+res2 <- USCovidData %>% column_to_rownames(var = "county_state") %>% prcomp(scale = TRUE)
+get_eig(res2)
+df.res2 <- res2$x
+```
+
+```{r}
+# k-means clustering US counties
+set.seed(1234)
+kc2 <- df.res2 %>% kmeans(6) 
+summary(kc2)
+o <- order(kc2$cluster)
+data.frame(kc2$cluster[o])
+```
+
+```{r warning=FALSE}
+# PCA biplot US counties
+res2 %>% fviz_pca_biplot(label = "var",
+                         habillage = as.factor(kc2$cluster),
+                         repel = "TRUE") +
+  ylim(-10, 4)
 ```
 
 ```{r}
 #Data Visualization
 ```
-
 
 ```{r}
 #Hypothesis Testing
