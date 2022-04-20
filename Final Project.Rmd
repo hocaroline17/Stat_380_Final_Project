@@ -338,7 +338,6 @@ res2 %>% fviz_pca_biplot(label = "var",
 ```{r}
 #Regresion
 
-```{r}
 df <- vacc %>%
   select(c(date, location, continent, total_cases, total_deaths, total_vaccinations, population, gdp_per_capita, extreme_poverty, human_development_index, life_expectancy )) %>%
    filter(date  == max(date)) %>%
