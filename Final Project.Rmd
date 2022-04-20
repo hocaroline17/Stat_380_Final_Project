@@ -12,6 +12,7 @@ library(factoextra)
 library(leaps)
 library(glmnet)
 library(ModelMetrics)
+library(sjmisc)
 ```
 
 
@@ -336,16 +337,31 @@ res2 %>% fviz_pca_biplot(label = "var",
 ```
 
 ```{r}
-#Regresion
+#Regression
+df <- CovidData %>%
+  group_by(location, continent) %>%
+  summarise(vaccination_received_rate = (max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE)) * 100,
+            total_cases = max(total_cases, na.rm = TRUE),
+            total_deaths = max(total_deaths, na.rm = TRUE),
+            total_vaccinations = max(total_vaccinations, na.rm = TRUE),
+            population = max(population, na.rm = TRUE),
+            gdp_per_capita = max(gdp_per_capita, na.rm = TRUE), 
+            life_expectancy = max(life_expectancy, na.rm = TRUE), 
+            extreme_poverty = max(extreme_poverty, na.rm = TRUE), 
+            human_development_index = max(human_development_index, na.rm = TRUE)) %>% 
+  na.omit() %>%
+  filter(is.finite(vaccination_received_rate),
+         is.finite(total_cases),
+         is.finite(total_deaths),
+         is.finite(total_vaccinations),
+         is.finite(population),
+         is.finite(gdp_per_capita),
+         is.finite(life_expectancy),
+         is.finite(extreme_poverty),
+         is.finite(human_development_index))
+  
 
-```{r}
-df <- vacc %>%
-  select(c(date, location, continent, total_cases, total_deaths, total_vaccinations, population, gdp_per_capita, extreme_poverty, human_development_index, life_expectancy )) %>%
-   filter(date  == max(date)) %>%
-   select(-date) %>%
-   mutate(vaccination_received_rate = (total_vaccinations/population) *100)
-   
-df<- na.omit(df)
+
 
 head(df)
 
@@ -357,11 +373,11 @@ head(df.cont)
 
 ```
 
-
-```{r}
-regfit.full = regsubsets(total_vaccinations ~ ., data = df.cont,  nvmax = 9, method="exhaustive") 
-summary(regfit.full)
-```
+redo regression
+<!-- ```{r} -->
+<!-- regfit.full = regsubsets(total_vaccinations ~ ., data = df.cont,  nvmax = 8, method="exhaustive")  -->
+<!-- summary(regfit.full) -->
+<!-- ``` -->
 
 ```{r}
 
