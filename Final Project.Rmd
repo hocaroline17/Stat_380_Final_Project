@@ -9,6 +9,9 @@ library(dplyr)
 library(tidyverse)
 library(cluster)
 library(factoextra)
+library(leaps)
+library(glmnet)
+library(ModelMetrics)
 ```
 
 
@@ -333,5 +336,192 @@ res2 %>% fviz_pca_biplot(label = "var",
 ```
 
 ```{r}
-#Linear Regresion
+#Regresion
+
+```{r}
+df <- vacc %>%
+  select(c(date, location, continent, total_cases, total_deaths, total_vaccinations, population, gdp_per_capita, extreme_poverty, human_development_index, life_expectancy )) %>%
+   filter(date  == max(date)) %>%
+   select(-date) %>%
+   mutate(vaccination_received_rate = (total_vaccinations/population) *100)
+   
+df<- na.omit(df)
+
+head(df)
+
+# data frame with only numericals to perform regression
+df.cont <- df %>%
+  select(-c(location, continent))
+
+head(df.cont)
+
+```
+
+
+```{r}
+regfit.full = regsubsets(total_vaccinations ~ ., data = df.cont,  nvmax = 9, method="exhaustive") 
+summary(regfit.full)
+```
+
+```{r}
+
+reg.summary <- summary(regfit.full) 
+
+par(mfrow=c(2,2))
+#rss plot -  NOT USEFUL
+plot(reg.summary$rss ,xlab="Number of Variables ",ylab="RSS",type="l")
+
+#adjr2 plot
+plot(reg.summary$adjr2 ,xlab="Number of Variables ", ylab="Adjusted RSq",type="l")
+max_adjr2 <- which.max(reg.summary$adjr2)
+points(max_adjr2,reg.summary$adjr2[max_adjr2], col="red",cex=2,pch=20)
+
+# AIC criterion (Cp) to minimize
+plot(reg.summary$cp ,xlab="Number of Variables ",ylab="Cp", type='l')
+min_cp <- which.min(reg.summary$cp )
+points(min_cp, reg.summary$cp[min_cp],col="red",cex=2,pch=20)
+
+# BIC criterion to minimize
+plot(reg.summary$bic ,xlab="Number of Variables ",ylab="BIC",type='l')
+min_bic <- which.min(reg.summary$bic)
+points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
+```
+
+
+```{r}
+# getting the predictors
+x_var <- df.cont %>% select(-vaccination_received_rate) %>% as.matrix()
+# getting the independent variable
+y_var <- df.cont[,"vaccination_received_rate"]
+```
+
+```{r}
+# performing lasso regression 
+
+lasso <- glmnet(x_var, y_var, alpha=1)
+summary(lasso)
+```
+
+```{r}
+cv_lasso <- cv.glmnet(x_var, y_var, alpha = 1)
+cv_lasso
+plot(cv_lasso)
+```
+
+```{r}
+cv_lasso$lambda.min
+cv_lasso$lambda.1se
+```
+
+```{r}
+lbs_fun <- function(fit, offset_x=1, ...) {
+  L <- length(fit$lambda)
+  x <- log(fit$lambda[L])+ offset_x
+  y <- fit$beta[, L]
+  labs <- names(y)
+  text(x, y, labels=labs, ...)
+}
+plot(lasso, xvar = "lambda", label=T)
+lbs_fun(lasso)
+abline(v=log(cv_lasso$lambda.min), col = "red", lty=2)
+abline(v=log(cv_lasso$lambda.1se), col="blue", lty=2)
+```
+
+```{r}
+min_lasso <- glmnet(x_var, y_var, alpha=1, lambda= cv_lasso$lambda.min)
+coef(min_lasso)
+
+se_lasso <- glmnet(x_var, y_var, alpha=1, lambda= cv_lasso$lambda.1se)
+coef(se_lasso)
+```
+
+```{r}
+# Make predictions on the test data
+predictions <- min_lasso %>% predict(x_var) %>% as.vector()
+# Model performance metrics
+data.frame(
+  RMSE = RMSE(predictions, y_var),
+  Rsquare = R2(predictions, y_var)
+)
+```
+
+```{r}
+## note: 
+
+# LASSO suggests model with 2 predictors
+
+# AIC and BIC suugests model with 3 predictors
+
+# from LASSO, it suggests that the best model is one with predictor gdp_per_capita and life_expectancy.
+# which both predictors are highly correlated? 
+```
+
+```{r}
+# simple linear regression
+
+# using df.cont
+
+attach(df.cont)
+lm.fit1 <- lm(vaccination_received_rate ~ ., data = df.cont)
+summary(lm.fit1) 
+
+# 3 significant variables: gdp_per_capita, human_development_index, life_expectancy; as suggested by BIC and AIC
+```
+
+```{r}
+library(car)
+vif(lm.fit1)
+
+plot(lm.fit1) # passed all assumptions
+```
+
+```{r}
+# a good vif values are those within 10
+
+# those are: gdp_per_capita, extreme_poverty, life expectancy
+
+lm.fit2 <- lm(vaccination_received_rate ~ gdp_per_capita + extreme_poverty + life_expectancy, data = df.cont)
+summary(lm.fit2) 
+```
+
+```{r}
+# simple linear regresion 
+
+lm.fit3 <- lm(vaccination_received_rate ~life_expectancy, data = df.cont)
+summary(lm.fit3) 
+```
+
+```{r}
+lm.fit3 <- lm(vaccination_received_rate ~gdp_per_capita, data = df.cont)
+summary(lm.fit3) 
+```
+
+```{r}
+# performing regression using the model suggested by the lasso
+
+lm.fit4 <- lm(vaccination_received_rate ~gdp_per_capita + life_expectancy, data = df.cont)
+summary(lm.fit4) 
+```
+
+```{r}
+AIC(lm.fit4)
+```
+
+
+```{r}
+# intuition: country with high life expentancy is modern countries.
+
+# so let's check its correlation
+cor(life_expectancy, gdp_per_capita)
+```
+
+### Conclusion
+
+- We have statistical evidence that countries with high life expentancy has receives more covid vaccines. 
+
+- Make sense as most of these countries produce the vaccines, and have more money to buy vaccines. 
+
+- Those country with high life expectancy are first class world countries. 
+
+
 ```
