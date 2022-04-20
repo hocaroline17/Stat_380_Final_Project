@@ -360,11 +360,6 @@ df <- CovidData %>%
          is.finite(extreme_poverty),
          is.finite(human_development_index))
   
-
-
-
-head(df)
-
 # data frame with only numericals to perform regression
 df.cont <- df %>%
   select(-c(location, continent))
@@ -380,7 +375,6 @@ redo regression
 <!-- ``` -->
 
 ```{r}
-
 reg.summary <- summary(regfit.full) 
 
 par(mfrow=c(2,2))
@@ -402,7 +396,6 @@ plot(reg.summary$bic ,xlab="Number of Variables ",ylab="BIC",type='l')
 min_bic <- which.min(reg.summary$bic)
 points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
 ```
-
 
 ```{r}
 # getting the predictors
@@ -523,7 +516,6 @@ summary(lm.fit4)
 AIC(lm.fit4)
 ```
 
-
 ```{r}
 # intuition: country with high life expentancy is modern countries.
 
@@ -538,6 +530,3 @@ cor(life_expectancy, gdp_per_capita)
 - Make sense as most of these countries produce the vaccines, and have more money to buy vaccines. 
 
 - Those country with high life expectancy are first class world countries. 
-
-
-```
