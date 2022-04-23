@@ -234,6 +234,7 @@ USCovidData <-
   left_join(Unemployment, by = c("county", "state")) %>%
   unite("county_state", county:state, sep = " ") %>%
   select(county_state, vaccinated, poverty, population, income, unemployment) %>%
+  rename(vaccination_rate = vaccinated) %>%
   na.omit() %>%
   distinct()
 ```
@@ -248,19 +249,17 @@ CovidData <-
 ```{r warning=FALSE}
 Ratios <- CovidData %>%
   group_by(location) %>%
-  summarise(ratio = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
-            gdp = max(gdp_per_capita, na.rm = TRUE), 
-            indexS = max(stringency_index, na.rm = TRUE), 
-            density = max(population_density, na.rm = TRUE), 
-            indexHD = max(human_development_index, na.rm = TRUE),
+  summarise(vaccination_rate = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
+            gdp_per_capita = max(gdp_per_capita, na.rm = TRUE), 
+            population_density = max(population_density, na.rm = TRUE), 
+            human_development_index = max(human_development_index, na.rm = TRUE),
             latitude = max(latitude, na.rm = TRUE),
             longitude = max(longitude, na.rm = TRUE)) %>% 
   na.omit() %>%
-  filter(is.finite(ratio),
-         is.finite(gdp),
-         is.finite(indexS),
-         is.finite(density),
-         is.finite(indexHD),
+  filter(is.finite(vaccination_rate),
+         is.finite(gdp_per_capita),
+         is.finite(population_density),
+         is.finite(human_development_index),
          is.finite(latitude),
          is.finite(longitude))
 Ratios
@@ -268,7 +267,7 @@ Ratios
 
 ```{r}
 # optimal number of clusters for countries
-set.seed(1234)
+set.seed(10)
 RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% scale()
 fviz_nbclust(RatiosScaled, kmeans, method = "wss")
 ```
@@ -282,8 +281,8 @@ df.res <- res$x
 
 ```{r}
 # k-means clustering 
-set.seed(1234)
-kc <- df.res %>% kmeans(6) 
+set.seed(10)
+kc <- df.res %>% kmeans(7) 
 summary(kc)
 o <- order(kc$cluster)
 data.frame(kc$cluster[o])
@@ -294,8 +293,10 @@ data.frame(kc$cluster[o])
 res %>% fviz_pca_biplot(label = "var",
                         habillage = as.factor(kc$cluster),
                         repel = "TRUE") +
-  ylim(-5, 3)
+  ylim(-2.5, 5)
 ```
+
+PC1 places approximately equal weight on Human Development Index, Vaccination Rate. and Gross Domestic, Murder, and Rape, but less weight on UrbanPop. PC1 negatively correlates to rates of serious crimes. States with large negative scores on PC1, such as California, Nevada and Florida, have high crime rates, while states with positive scores on PC1, like North Dakota, have low crime rates. PC2 places most of its weight on UrbanPop and less weight on the other three variables. PC2 negatively correlates to the percentage of the population that lives in urban areas. States with large negative scores on PC2, like California, have a high percentage of their population living in urban areas, while states with positive scores on PC2, like Mississippi, have a low percentage of their population living in urban areas.
 
 ```{r}
 # optimal number of clusters US counties
@@ -340,7 +341,7 @@ res2 %>% fviz_pca_biplot(label = "var",
 #Regression
 df <- CovidData %>%
   group_by(location, continent) %>%
-  summarise(vaccination_received_rate = (max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE)) * 100,
+  summarise(vaccination_rate = (max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE)) * 100,
             total_vaccinations = max(total_vaccinations, na.rm = TRUE),
             population = max(population, na.rm = TRUE),
             gdp_per_capita = max(gdp_per_capita, na.rm = TRUE), 
@@ -348,7 +349,7 @@ df <- CovidData %>%
             extreme_poverty = max(extreme_poverty, na.rm = TRUE), 
             human_development_index = max(human_development_index, na.rm = TRUE)) %>% 
   na.omit() %>%
-  filter(is.finite(vaccination_received_rate),
+  filter(is.finite(vaccination_rate),
          is.finite(total_vaccinations),
          is.finite(population),
          is.finite(gdp_per_capita),
@@ -362,7 +363,7 @@ head(df.cont1)
 
 ```{r}
 # forward selection
-regfit.full.forw = regsubsets(vaccination_received_rate ~ ., data = df.cont1,  nvmax = 4, method="forward") 
+regfit.full.forw = regsubsets(vaccination_rate ~ ., data = df.cont1,  nvmax = 4, method="forward") 
 summary(regfit.full.forw)
 ```
 
@@ -386,7 +387,7 @@ points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
 
 ```{r}
 # backward selection
-regfit.full.back = regsubsets(vaccination_received_rate ~ ., data = df.cont1,  nvmax = 4, method="backward") 
+regfit.full.back = regsubsets(vaccination_rate ~ ., data = df.cont1,  nvmax = 4, method="backward") 
 summary(regfit.full.forw)
 ```
 
@@ -409,7 +410,7 @@ points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
 
 ```{r}
 # stepwise selection
-regfit.full.step = regsubsets(vaccination_received_rate ~ ., data = df.cont1,  nvmax = 4, method="seqrep") 
+regfit.full.step = regsubsets(vaccination_rate ~ ., data = df.cont1,  nvmax = 4, method="seqrep") 
 summary(regfit.full.step)
 ```
 
@@ -432,16 +433,16 @@ points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
 
 ```{r} 
 # summary from above steps # can be dropped
-bestsub1=regsubsets(vaccination_received_rate~gdp_per_capita + life_expectancy + extreme_poverty + human_development_index,
+bestsub1=regsubsets(vaccination_rate~gdp_per_capita + life_expectancy + extreme_poverty + human_development_index,
                     data=df.cont1, nbest=16) 
 plot(bestsub1, scale="adjr2") # the higher the better
 plot(bestsub1, scale="Cp") # the lower the better
 plot(bestsub1, scale="bic") # the lower the better
 summary(bestsub1) # the top for each number set of variable is the best 
 #Automatic selection - Forward
-null=lm(vaccination_received_rate~1, data=df.cont1) #intercept only model; tilde 1
+null=lm(vaccination_rate~1, data=df.cont1) #intercept only model; tilde 1
 #full model- Regresses y on all variables in dataset
-full=lm(vaccination_received_rate~., data=df.cont1)#full model- Regresses y on all variables in dataset
+full=lm(vaccination_rate~., data=df.cont1)#full model- Regresses y on all variables in dataset
 step(null, scope=list(lower=null, upper=full),
      direction="forward") # start from the intercept to the X1 to X5 
 #Automatic selection - backward
@@ -452,7 +453,7 @@ step(null, scope = list(upper=full), data=df.cont1, direction="both") # forward 
 
 ```{r}
 attach(df.cont1)
-lm.fit <- lm(vaccination_received_rate ~ life_expectancy + human_development_index , data = df.cont1)
+lm.fit <- lm(vaccination_rate ~ life_expectancy + human_development_index , data = df.cont1)
 summary(lm.fit) 
 ```
 
