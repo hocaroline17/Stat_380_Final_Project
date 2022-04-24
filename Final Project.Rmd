@@ -13,6 +13,8 @@ library(leaps)
 library(glmnet)
 library(ModelMetrics)
 library(sjmisc)
+library(mosaic)
+library(tmap)
 ```
 
 
@@ -227,41 +229,73 @@ Unemployment <-
 
 Unemployment[is.na(Unemployment)] = "DC" # add state abbreviation for Washington, D.C.
 
+Geography <- 
+  Geography %>%
+  # remove cases from Geography
+  filter(!grepl("AS|GU|MP|PR|VI", state)) 
+
+Geography <- 
+  Geography %>%
+  # remove and rename cases in Geography
+  filter(!grepl("Kalawao County|Valdez-Cordova Census Area", county)) %>%
+  mutate(county = gsub("Doña Ana County", "Dona Ana County", county),
+         county = gsub("LaSalle", "La Salle", county),
+         county = gsub("Petersburg Borough", "Petersburg Census Area", county))
+
 USCovidData <-
   Vaccination %>%
   left_join(Population, by = c("county", "state")) %>%
   left_join(IncomeAndPoverty, by = c("county", "state")) %>%
   left_join(Unemployment, by = c("county", "state")) %>%
+  left_join(Geography, by = c("county", "state")) %>%
   unite("county_state", county:state, sep = " ") %>%
-  select(county_state, vaccinated, poverty, population, income, unemployment) %>%
+  select(county_state, vaccinated, poverty, population, income, unemployment, longitude, latitude) %>%
   rename(vaccination_rate = vaccinated) %>%
   na.omit() %>%
   distinct()
 ```
 
 ```{r}
+WorldGeography <-
+  WorldGeography %>%
+  mutate(country = gsub("Brunei Darussalam", "Brunei", country),
+         country = gsub("Cabo Verde", "Cape Verde", country),
+         country = gsub("Côte d'Ivoire", "Cote d'Ivoire", country),
+         country = gsub("Czech Republic", "Czechia", country), 
+         country = gsub("Congo DRC", "Democratic Republic of Congo", country), 
+         country = gsub("Micronesia", "Micronesia (country)", country), 
+         country = gsub("Palestinian Territory", "Palestine", country),
+         country = gsub("Russian Federation", "Russia", country),
+         country = gsub("Timor-Leste", "Timor", country))
+```
+
+```{r}
 # adding longitude and latitude to CovidData
 CovidData <-
   CovidData %>%
-  left_join(WorldGeography, by = c("location" = "country"))
+  left_join(WorldGeography, by = c("location" = "country")) 
 ```
 
 ```{r warning=FALSE}
 Ratios <- CovidData %>%
   group_by(location) %>%
-  summarise(vaccination_rate = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
-            gdp_per_capita = max(gdp_per_capita, na.rm = TRUE), 
-            population_density = max(population_density, na.rm = TRUE), 
+  summarise(vaccination_rate = (max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE)),
+            gdp_per_capita = max(gdp_per_capita, na.rm = TRUE),
+            population_density = max(population_density, na.rm = TRUE),
             human_development_index = max(human_development_index, na.rm = TRUE),
             latitude = max(latitude, na.rm = TRUE),
-            longitude = max(longitude, na.rm = TRUE)) %>% 
-  na.omit() %>%
+            longitude = max(longitude, na.rm = TRUE))
+
+Ratios[201, 4] = 11381377 / 644329
+
+Ratios <- Ratios %>%
   filter(is.finite(vaccination_rate),
          is.finite(gdp_per_capita),
          is.finite(population_density),
          is.finite(human_development_index),
          is.finite(latitude),
          is.finite(longitude))
+
 Ratios
 ```
 
@@ -281,8 +315,8 @@ df.res <- res$x
 
 ```{r}
 # k-means clustering 
-set.seed(10)
-kc <- df.res %>% kmeans(7) 
+set.seed(1)
+kc <- df.res %>% kmeans(5) 
 summary(kc)
 o <- order(kc$cluster)
 data.frame(kc$cluster[o])
@@ -296,18 +330,41 @@ res %>% fviz_pca_biplot(label = "var",
   ylim(-2.5, 5)
 ```
 
-PC1 places approximately equal weight on Human Development Index, Vaccination Rate. and Gross Domestic, Murder, and Rape, but less weight on UrbanPop. PC1 negatively correlates to rates of serious crimes. States with large negative scores on PC1, such as California, Nevada and Florida, have high crime rates, while states with positive scores on PC1, like North Dakota, have low crime rates. PC2 places most of its weight on UrbanPop and less weight on the other three variables. PC2 negatively correlates to the percentage of the population that lives in urban areas. States with large negative scores on PC2, like California, have a high percentage of their population living in urban areas, while states with positive scores on PC2, like Mississippi, have a low percentage of their population living in urban areas.
+PC1 places approximately equal weight on vaccination rate, human development index, and gross domestic product per capita, with slightly less weight on latitude and much less weight on population density and longitude. The human development index is a composite index that takes into account life expectancy, average education level, expected years of education, and average income. 
+
+Countries with negative scores on PC1 have high gross domestic product per capita, human development values, and vaccination rates. PC1 suggests that a country's gross domestic product per capita and human development index value are correlated with the percentage of the population that is vaccinated against COVID-19. Countries in the Northern hemisphere, with a more positive latitude, also appear to be more likely to have a high vaccination rate, gross domestic product per capita, and human development index value. 
+
+The rightmost cluster, which is represented by pink boxes in the biplot, contains wealthy and developed countries like France, Japan, the United Kingdom, and the United States. 
+
+PC2 places most of its weight on longitude and population density. 
+
+
+```{r}
+set.seed(1)
+clusts <- df.res %>% 
+  kmeans(centers = 5) %>% 
+  fitted("classes") %>% 
+  as.character() 
+
+Ratios <- Ratios %>% 
+  mutate(cluster = clusts)
+
+mWorldMap(
+  data = Ratios,
+  key = "location",
+  fill = "cluster")
+```
 
 ```{r}
 # optimal number of clusters US counties
 set.seed(1234)
-USScaled <- USCovidData %>% column_to_rownames(var = "county_state") %>% scale()
+USScaled <- USCovidData %>% select(-c(longitude, latitude)) %>% column_to_rownames(var = "county_state") %>% scale()
 fviz_nbclust(USScaled, kmeans, method = "wss")
 ```
 
 ```{r}
 # PCA US counties
-res2 <- USCovidData %>% column_to_rownames(var = "county_state") %>% prcomp(scale = TRUE)
+res2 <- USCovidData %>% column_to_rownames(var = "county_state") %>% select(-c(longitude, latitude)) %>% prcomp(scale = TRUE)
 get_eig(res2)
 df.res2 <- res2$x
 ```
@@ -330,6 +387,42 @@ res2 %>% fviz_pca_biplot(label = "var",
 ```
 
 ```{r}
+set.seed(1234)
+clusts2 <- df.res2 %>% 
+  kmeans(centers = 6) %>% 
+  fitted("classes") %>% 
+  as.character() 
+
+USCovidData <- USCovidData %>% 
+  mutate(cluster = clusts2)
+```
+
+```{r}
+USCovidData %>% 
+  ggplot(aes(x = longitude, y = latitude)) + # define axes
+  geom_point(aes(color = cluster), size = 1) + # add points colored by cluster
+  xlim(-125, -60) + 
+  ylim(24, 50) + 
+  labs(color = "cluster", title = "County Clusters") +
+  theme_bw() +
+  theme(legend.position = "bottom") 
+```
+
+```{r}
+StateCovidData <- 
+  Vaccination %>%
+  left_join(Population, by = c("county", "state")) %>%
+  left_join(IncomeAndPoverty, by = c("county", "state")) %>%
+  left_join(Unemployment, by = c("county", "state")) %>%
+  left_join(Geography, by = c("county", "state")) %>%
+  group_by(state) %>%
+  mutate(meanVaccinated = mean(vaccinated)) %>%
+  filter(!grepl("DC", state))
+```
+
+
+
+```{r}
 #Data Visualization
 ```
 
@@ -337,27 +430,6 @@ res2 %>% fviz_pca_biplot(label = "var",
 #Hypothesis Testing
 ```
 
-<<<<<<< HEAD
-```{r}
-#Regresion 1
-
-df <- vacc %>%
-  select(c(date, location, continent, total_cases, total_deaths, total_vaccinations, population, gdp_per_capita, extreme_poverty, human_development_index, life_expectancy )) %>%
-   filter(date  == max(date)) %>%
-   select(-date) %>%
-   mutate(vaccination_received_rate = (total_vaccinations/population) *100)
-   
-df<- na.omit(df)
-
-head(df)
-
-# data frame with only numericals to perform regression
-df.cont <- df %>%
-  select(-c(location, continent))
-
-head(df.cont)
-
-=======
 ```{r warning=FALSE}
 #Regression
 df <- CovidData %>%
@@ -380,7 +452,6 @@ df <- CovidData %>%
 head(df)  
 df.cont1 = subset(df, select = -c(location, continent, total_vaccinations, population))
 head(df.cont1)
->>>>>>> 5ab47bca755c7d79c495174b3f598bc2a85575b6
 ```
 
 ```{r}
