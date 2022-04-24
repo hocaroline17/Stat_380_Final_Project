@@ -404,14 +404,35 @@ USCovidData <- USCovidData %>%
 ```
 
 ```{r}
-USCovidData %>% 
+USCovidData2 <- USCovidData %>% 
+  filter(longitude < -103)
+
+USCovidData3 <- USCovidData %>% 
+  filter(longitude >= -103) %>%
+  filter(latitude > 42) %>%
+  filter(longitude <= -100)
+
+USCovidData4 <- USCovidData %>% 
+  filter(latitude > 46)  %>%
+  filter(longitude > -100) %>%
+  filter(longitude < -80)
+```
+
+
+```{r}
+USCovidData %>%
   ggplot(aes(x = longitude, y = latitude)) + # define axes
-  geom_point(aes(color = cluster), size = 1, stroke = 0) + # add points colored by cluster
-  xlim(-125, -60) + 
-  ylim(24, 50) + 
+  geom_point(aes(color = cluster), size = 1, stroke = 0) + 
+  geom_point(data = USCovidData2, aes(color = cluster), size = 1, stroke = 1, alpha = 0.3) + 
+  geom_point(data = USCovidData3, aes(color = cluster), size = 1, stroke = 1, alpha = 0.3) +
+  geom_point(data = USCovidData4, aes(color = cluster), size = 1, stroke = 1, alpha = 0.3) +
+  xlim(-125, -67) + 
+  ylim(24, 49) + 
   labs(color = "cluster", title = "County Clusters") +
   theme_bw() +
   theme(legend.position = "right") 
+
+
 ```
 
 ```{r}
