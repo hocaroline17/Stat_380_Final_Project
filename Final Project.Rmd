@@ -12,6 +12,7 @@ library(factoextra)
 library(leaps)
 library(glmnet)
 library(ModelMetrics)
+library(sjmisc)
 ```
 
 
@@ -233,6 +234,7 @@ USCovidData <-
   left_join(Unemployment, by = c("county", "state")) %>%
   unite("county_state", county:state, sep = " ") %>%
   select(county_state, vaccinated, poverty, population, income, unemployment) %>%
+  rename(vaccination_rate = vaccinated) %>%
   na.omit() %>%
   distinct()
 ```
@@ -247,19 +249,17 @@ CovidData <-
 ```{r warning=FALSE}
 Ratios <- CovidData %>%
   group_by(location) %>%
-  summarise(ratio = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
-            gdp = max(gdp_per_capita, na.rm = TRUE), 
-            indexS = max(stringency_index, na.rm = TRUE), 
-            density = max(population_density, na.rm = TRUE), 
-            indexHD = max(human_development_index, na.rm = TRUE),
+  summarise(vaccination_rate = max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE), 
+            gdp_per_capita = max(gdp_per_capita, na.rm = TRUE), 
+            population_density = max(population_density, na.rm = TRUE), 
+            human_development_index = max(human_development_index, na.rm = TRUE),
             latitude = max(latitude, na.rm = TRUE),
             longitude = max(longitude, na.rm = TRUE)) %>% 
   na.omit() %>%
-  filter(is.finite(ratio),
-         is.finite(gdp),
-         is.finite(indexS),
-         is.finite(density),
-         is.finite(indexHD),
+  filter(is.finite(vaccination_rate),
+         is.finite(gdp_per_capita),
+         is.finite(population_density),
+         is.finite(human_development_index),
          is.finite(latitude),
          is.finite(longitude))
 Ratios
@@ -267,7 +267,7 @@ Ratios
 
 ```{r}
 # optimal number of clusters for countries
-set.seed(1234)
+set.seed(10)
 RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% scale()
 fviz_nbclust(RatiosScaled, kmeans, method = "wss")
 ```
@@ -281,8 +281,8 @@ df.res <- res$x
 
 ```{r}
 # k-means clustering 
-set.seed(1234)
-kc <- df.res %>% kmeans(6) 
+set.seed(10)
+kc <- df.res %>% kmeans(7) 
 summary(kc)
 o <- order(kc$cluster)
 data.frame(kc$cluster[o])
@@ -293,8 +293,10 @@ data.frame(kc$cluster[o])
 res %>% fviz_pca_biplot(label = "var",
                         habillage = as.factor(kc$cluster),
                         repel = "TRUE") +
-  ylim(-5, 3)
+  ylim(-2.5, 5)
 ```
+
+PC1 places approximately equal weight on Human Development Index, Vaccination Rate. and Gross Domestic, Murder, and Rape, but less weight on UrbanPop. PC1 negatively correlates to rates of serious crimes. States with large negative scores on PC1, such as California, Nevada and Florida, have high crime rates, while states with positive scores on PC1, like North Dakota, have low crime rates. PC2 places most of its weight on UrbanPop and less weight on the other three variables. PC2 negatively correlates to the percentage of the population that lives in urban areas. States with large negative scores on PC2, like California, have a high percentage of their population living in urban areas, while states with positive scores on PC2, like Mississippi, have a low percentage of their population living in urban areas.
 
 ```{r}
 # optimal number of clusters US counties
@@ -335,6 +337,7 @@ res2 %>% fviz_pca_biplot(label = "var",
 #Hypothesis Testing
 ```
 
+<<<<<<< HEAD
 ```{r}
 #Regresion 1
 
@@ -354,32 +357,49 @@ df.cont <- df %>%
 
 head(df.cont)
 
+=======
+```{r warning=FALSE}
+#Regression
+df <- CovidData %>%
+  group_by(location, continent) %>%
+  summarise(vaccination_rate = (max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE)) * 100,
+            total_vaccinations = max(total_vaccinations, na.rm = TRUE),
+            population = max(population, na.rm = TRUE),
+            gdp_per_capita = max(gdp_per_capita, na.rm = TRUE), 
+            life_expectancy = max(life_expectancy, na.rm = TRUE), 
+            extreme_poverty = max(extreme_poverty, na.rm = TRUE), 
+            human_development_index = max(human_development_index, na.rm = TRUE)) %>% 
+  na.omit() %>%
+  filter(is.finite(vaccination_rate),
+         is.finite(total_vaccinations),
+         is.finite(population),
+         is.finite(gdp_per_capita),
+         is.finite(life_expectancy),
+         is.finite(extreme_poverty),
+         is.finite(human_development_index))
+head(df)  
+df.cont1 = subset(df, select = -c(location, continent, total_vaccinations, population))
+head(df.cont1)
+>>>>>>> 5ab47bca755c7d79c495174b3f598bc2a85575b6
 ```
 
-
 ```{r}
-regfit.full = regsubsets(total_vaccinations ~ ., data = df.cont,  nvmax = 9, method="exhaustive") 
-summary(regfit.full)
+# forward selection
+regfit.full.forw = regsubsets(vaccination_rate ~ ., data = df.cont1,  nvmax = 4, method="forward") 
+summary(regfit.full.forw)
 ```
 
 ```{r}
-
-reg.summary <- summary(regfit.full) 
-
+reg.summary <- summary(regfit.full.forw) 
 par(mfrow=c(2,2))
-#rss plot -  NOT USEFUL
-plot(reg.summary$rss ,xlab="Number of Variables ",ylab="RSS",type="l")
-
 #adjr2 plot
 plot(reg.summary$adjr2 ,xlab="Number of Variables ", ylab="Adjusted RSq",type="l")
 max_adjr2 <- which.max(reg.summary$adjr2)
 points(max_adjr2,reg.summary$adjr2[max_adjr2], col="red",cex=2,pch=20)
-
 # AIC criterion (Cp) to minimize
 plot(reg.summary$cp ,xlab="Number of Variables ",ylab="Cp", type='l')
 min_cp <- which.min(reg.summary$cp )
 points(min_cp, reg.summary$cp[min_cp],col="red",cex=2,pch=20)
-
 # BIC criterion to minimize
 plot(reg.summary$bic ,xlab="Number of Variables ",ylab="BIC",type='l')
 min_bic <- which.min(reg.summary$bic)
@@ -388,140 +408,87 @@ points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
 
 
 ```{r}
-# getting the predictors
-x_var <- df.cont %>% select(-vaccination_received_rate) %>% as.matrix()
-# getting the independent variable
-y_var <- df.cont[,"vaccination_received_rate"]
+# backward selection
+regfit.full.back = regsubsets(vaccination_rate ~ ., data = df.cont1,  nvmax = 4, method="backward") 
+summary(regfit.full.forw)
 ```
 
 ```{r}
-# performing lasso regression 
-
-lasso <- glmnet(x_var, y_var, alpha=1)
-summary(lasso)
+reg.summary <- summary(regfit.full.back) 
+par(mfrow=c(2,2))
+#adjr2 plot
+plot(reg.summary$adjr2 ,xlab="Number of Variables ", ylab="Adjusted RSq",type="l")
+max_adjr2 <- which.max(reg.summary$adjr2)
+points(max_adjr2,reg.summary$adjr2[max_adjr2], col="red",cex=2,pch=20)
+# AIC criterion (Cp) to minimize
+plot(reg.summary$cp ,xlab="Number of Variables ",ylab="Cp", type='l')
+min_cp <- which.min(reg.summary$cp )
+points(min_cp, reg.summary$cp[min_cp],col="red",cex=2,pch=20)
+# BIC criterion to minimize
+plot(reg.summary$bic ,xlab="Number of Variables ",ylab="BIC",type='l')
+min_bic <- which.min(reg.summary$bic)
+points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
 ```
 
 ```{r}
-cv_lasso <- cv.glmnet(x_var, y_var, alpha = 1)
-cv_lasso
-plot(cv_lasso)
+# stepwise selection
+regfit.full.step = regsubsets(vaccination_rate ~ ., data = df.cont1,  nvmax = 4, method="seqrep") 
+summary(regfit.full.step)
 ```
 
 ```{r}
-cv_lasso$lambda.min
-cv_lasso$lambda.1se
+reg.summary <- summary(regfit.full.step) 
+par(mfrow=c(2,2))
+#adjr2 plot
+plot(reg.summary$adjr2 ,xlab="Number of Variables ", ylab="Adjusted RSq",type="l")
+max_adjr2 <- which.max(reg.summary$adjr2)
+points(max_adjr2,reg.summary$adjr2[max_adjr2], col="red",cex=2,pch=20)
+# AIC criterion (Cp) to minimize
+plot(reg.summary$cp ,xlab="Number of Variables ",ylab="Cp", type='l')
+min_cp <- which.min(reg.summary$cp )
+points(min_cp, reg.summary$cp[min_cp],col="red",cex=2,pch=20)
+# BIC criterion to minimize
+plot(reg.summary$bic ,xlab="Number of Variables ",ylab="BIC",type='l')
+min_bic <- which.min(reg.summary$bic)
+points(min_bic,reg.summary$bic[min_bic],col="red",cex=2,pch=20)
+```
+
+```{r} 
+# summary from above steps # can be dropped
+bestsub1=regsubsets(vaccination_rate~gdp_per_capita + life_expectancy + extreme_poverty + human_development_index,
+                    data=df.cont1, nbest=16) 
+plot(bestsub1, scale="adjr2") # the higher the better
+plot(bestsub1, scale="Cp") # the lower the better
+plot(bestsub1, scale="bic") # the lower the better
+summary(bestsub1) # the top for each number set of variable is the best 
+#Automatic selection - Forward
+null=lm(vaccination_rate~1, data=df.cont1) #intercept only model; tilde 1
+#full model- Regresses y on all variables in dataset
+full=lm(vaccination_rate~., data=df.cont1)#full model- Regresses y on all variables in dataset
+step(null, scope=list(lower=null, upper=full),
+     direction="forward") # start from the intercept to the X1 to X5 
+#Automatic selection - backward
+step(full, data=modelsel, direction="backward") 
+#Automatic selection - Stepwise 
+step(null, scope = list(upper=full), data=df.cont1, direction="both") # forward but with re-evaluation
 ```
 
 ```{r}
-lbs_fun <- function(fit, offset_x=1, ...) {
-  L <- length(fit$lambda)
-  x <- log(fit$lambda[L])+ offset_x
-  y <- fit$beta[, L]
-  labs <- names(y)
-  text(x, y, labels=labs, ...)
-}
-plot(lasso, xvar = "lambda", label=T)
-lbs_fun(lasso)
-abline(v=log(cv_lasso$lambda.min), col = "red", lty=2)
-abline(v=log(cv_lasso$lambda.1se), col="blue", lty=2)
+attach(df.cont1)
+lm.fit <- lm(vaccination_rate ~ life_expectancy + human_development_index , data = df.cont1)
+summary(lm.fit) 
 ```
 
 ```{r}
-min_lasso <- glmnet(x_var, y_var, alpha=1, lambda= cv_lasso$lambda.min)
-coef(min_lasso)
-
-se_lasso <- glmnet(x_var, y_var, alpha=1, lambda= cv_lasso$lambda.1se)
-coef(se_lasso)
-```
-
-```{r}
-# Make predictions on the test data
-predictions <- min_lasso %>% predict(x_var) %>% as.vector()
-# Model performance metrics
-data.frame(
-  RMSE = RMSE(predictions, y_var),
-  Rsquare = R2(predictions, y_var)
-)
-```
-
-```{r}
-## note: 
-
-# LASSO suggests model with 2 predictors
-
-# AIC and BIC suugests model with 3 predictors
-
-# from LASSO, it suggests that the best model is one with predictor gdp_per_capita and life_expectancy.
-# which both predictors are highly correlated? 
-```
-
-```{r}
-# simple linear regression
-
-# using df.cont
-
-attach(df.cont)
-lm.fit1 <- lm(vaccination_received_rate ~ ., data = df.cont)
-summary(lm.fit1) 
-
-# 3 significant variables: gdp_per_capita, human_development_index, life_expectancy; as suggested by BIC and AIC
-```
-
-```{r}
+# diagnostic tests
 library(car)
-vif(lm.fit1)
-
-plot(lm.fit1) # passed all assumptions
+vif(lm.fit)
+par(mfrow=c(2,2))
+plot(lm.fit)
 ```
 
 ```{r}
-# a good vif values are those within 10
-
-# those are: gdp_per_capita, extreme_poverty, life expectancy
-
-lm.fit2 <- lm(vaccination_received_rate ~ gdp_per_capita + extreme_poverty + life_expectancy, data = df.cont)
-summary(lm.fit2) 
+# take away 
+# all three methods suggest the best model is one with predictors: life_expectancy + human_developement_index
+# explain the covariance factors behind the results #
 ```
-
-```{r}
-# simple linear regresion 
-
-lm.fit3 <- lm(vaccination_received_rate ~life_expectancy, data = df.cont)
-summary(lm.fit3) 
-```
-
-```{r}
-lm.fit3 <- lm(vaccination_received_rate ~gdp_per_capita, data = df.cont)
-summary(lm.fit3) 
-```
-
-```{r}
-# performing regression using the model suggested by the lasso
-
-lm.fit4 <- lm(vaccination_received_rate ~gdp_per_capita + life_expectancy, data = df.cont)
-summary(lm.fit4) 
-```
-
-```{r}
-AIC(lm.fit4)
-```
-
-
-```{r}
-# intuition: country with high life expentancy is modern countries.
-
-# so let's check its correlation
-cor(life_expectancy, gdp_per_capita)
-```
-
-### Conclusion
-
-- We have statistical evidence that countries with high life expentancy has receives more covid vaccines. 
-
-- Make sense as most of these countries produce the vaccines, and have more money to buy vaccines. 
-
-- Those country with high life expectancy are first class world countries. 
-
-
-```
-test
