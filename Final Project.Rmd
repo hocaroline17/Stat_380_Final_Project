@@ -280,6 +280,7 @@ CovidData <-
 Ratios <- CovidData %>%
   group_by(location) %>%
   summarise(vaccination_rate = (max(total_vaccinations, na.rm = TRUE)/max(population, na.rm = TRUE)),
+            total_vaccinations = (max(total_vaccinations, na.rm = TRUE)),
             gdp_per_capita = max(gdp_per_capita, na.rm = TRUE),
             population_density = max(population_density, na.rm = TRUE),
             human_development_index = max(human_development_index, na.rm = TRUE),
@@ -290,6 +291,7 @@ Ratios[201, 4] = 11381377 / 644329
 
 Ratios <- Ratios %>%
   filter(is.finite(vaccination_rate),
+         is.finite(total_vaccinations),
          is.finite(gdp_per_capita),
          is.finite(population_density),
          is.finite(human_development_index),
@@ -302,13 +304,13 @@ Ratios
 ```{r}
 # optimal number of clusters for countries
 set.seed(10)
-RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% scale()
+RatiosScaled <- Ratios %>% column_to_rownames(var = "location") %>% select(-total_vaccinations) %>% scale()
 fviz_nbclust(RatiosScaled, kmeans, method = "wss")
 ```
 
 ```{r}
 # PCA
-res <- Ratios %>% column_to_rownames(var = "location") %>% prcomp(scale = TRUE)
+res <- Ratios %>% column_to_rownames(var = "location") %>% select(-total_vaccinations) %>% prcomp(scale = TRUE)
 get_eig(res)
 df.res <- res$x
 ```
@@ -370,6 +372,10 @@ df.res2 <- res2$x
 ```
 
 ```{r}
+
+```
+
+```{r}
 # k-means clustering US counties
 set.seed(1234)
 kc2 <- df.res2 %>% kmeans(6) 
@@ -400,12 +406,12 @@ USCovidData <- USCovidData %>%
 ```{r}
 USCovidData %>% 
   ggplot(aes(x = longitude, y = latitude)) + # define axes
-  geom_point(aes(color = cluster), size = 1) + # add points colored by cluster
+  geom_point(aes(color = cluster), size = 1, stroke = 0) + # add points colored by cluster
   xlim(-125, -60) + 
   ylim(24, 50) + 
   labs(color = "cluster", title = "County Clusters") +
   theme_bw() +
-  theme(legend.position = "bottom") 
+  theme(legend.position = "right") 
 ```
 
 ```{r}
@@ -453,6 +459,41 @@ head(df)
 df.cont1 = subset(df, select = -c(location, continent, total_vaccinations, population))
 head(df.cont1)
 ```
+
+```{r}
+df2 <- df %>%
+  group_by(location, continent) %>%
+  summarise(total_vaccinations = max(total_vaccinations, na.rm = TRUE)) 
+
+df3 <- df2 %>%
+  group_by(continent) %>%
+  summarise(total_vaccinations = sum(total_vaccinations, na.rm = TRUE))
+
+df3 %>%
+  ggplot(aes(x = continent, y = total_vaccinations, fill = continent)) +
+  geom_col() +
+  geom_text(aes(label = total_vaccinations), vjust = 1.5, colour = "white") +
+  labs(x = "Continent", y = "sqrt(Total Vaccinations)") +
+  scale_y_sqrt() +
+  theme_bw() +
+  theme(legend.position = "none") 
+```
+
+```{r}
+df4 <- Ratios %>%
+  filter(cluster == 5) %>%
+  filter(total_vaccinations > 62388850) 
+  
+df4 %>%
+  ggplot(aes(x = location, y = vaccination_rate, fill = location)) +
+  geom_col() +
+  labs(x = "Country", y = "Vaccination Rate") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(legend.position = "none") 
+
+```
+
 
 ```{r}
 # forward selection
